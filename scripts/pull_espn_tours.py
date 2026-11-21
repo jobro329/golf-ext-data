@@ -7,7 +7,9 @@ Additions for running outside the Claude workspace (all optional, defaults uncha
   --out DIR                                      output folder (default: <ROOT>/pq)
   season range runs to next calendar year automatically (the model copy hard-codes 2018-2026)
 
-Needs network access to site.api.espn.com (and sports.core.api.espn.com for the fallback).
+Needs network access to site.api.espn.com for season calendars and site.web.api.espn.com for
+completed-event leaderboards. The older site.api.espn.com scoreboard?event= endpoint ignores the
+event parameter and returns the current event (zero historic rounds); do not use it.
 ESPN athlete ids are shared across tours, so these rounds join our PGA Tour players automatically.
 
 Output columns: year, tour, tournament_id, tournament_name, start_date, round, player_id, player_name,
@@ -17,9 +19,9 @@ Team events, match play and Stableford formats are skipped by name.
 
 Endpoints (public ESPN JSON):
   calendar : https://site.api.espn.com/apis/site/v2/sports/golf/{league}/scoreboard?dates={year}
-  event    : https://site.api.espn.com/apis/site/v2/sports/golf/{league}/scoreboard?event={event_id}
-  fallback : https://sports.core.api.espn.com/v2/sports/golf/leagues/{league}/events/{id}/competitions/{id}/competitors
+  event    : https://site.web.api.espn.com/apis/site/v2/sports/golf/leaderboard?league={league}&event={event_id}
 If ESPN changes a field name, run with --inspect to dump one raw event JSON and adjust parse_event().
+This version was verified against the Nov 21, 2026 ESPN endpoint diagnostics for 2025 DP World and LIV events.
 """
 import glob
 import json
@@ -28,6 +30,7 @@ import re
 import sys
 import time
 import urllib.request
+from urllib.parse import urlencode
 from datetime import datetime, timezone
 import pandas as pd
 
@@ -39,7 +42,11 @@ os.makedirs(PQ, exist_ok=True)
 _NEXT = datetime.now(timezone.utc).year + 2  # range end is exclusive: covers the season that starts late this year
 LEAGUES = {"eur": range(2018, _NEXT), "liv": range(2022, _NEXT)}
 SKIP = re.compile(r"team|match play|stableford|ryder|presidents|pro-am only|shootout|hero cup|q-school", re.I)
-UA = {"User-Agent": "Mozilla/5.0 (golf model research)"}
+UA = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0 Safari/537.36",
+    "Accept": "application/json, text/plain, */*",
+    "Referer": "https://www.espn.com/",
+}
 
 
 def get(url, tries=3):
@@ -66,6 +73,19 @@ def calendar(league, year):
     return cal
 
 
+def historical_leaderboard(league, event_id):
+    """Fetch the actual historical event. Check IDs to guard against a silently stale/current page."""
+    url = ("https://site.web.api.espn.com/apis/site/v2/sports/golf/leaderboard?"
+           + urlencode({"league": league, "event": str(event_id)}))
+    d = get(url)
+    events = d.get("events", []) if isinstance(d, dict) else []
+    matches = [e for e in events if str(e.get("id")) == str(event_id)]
+    if len(matches) != 1:
+        got = [e.get("id") for e in events if isinstance(e, dict)]
+        raise ValueError(f"ESPN historical event mismatch: requested {event_id}, returned {got}")
+    return {"events": matches}
+
+
 def to_par(s):
     s = str(s).strip().upper()
     if s in ("E", "EVEN", "0"):
@@ -83,7 +103,9 @@ def parse_event(d, league, meta):
                 ath = c.get("athlete", {})
                 pid = str(c.get("id") or ath.get("id"))
                 pname = ath.get("displayName") or ath.get("fullName")
-                pos = (c.get("status", {}) or {}).get("position", {}).get("id") or c.get("order") or c.get("sortOrder")
+                # Legacy baseline uses ESPN sortOrder, not tied finishing-place IDs.
+                # Preserve its ranking semantics so historical rows remain unchanged.
+                pos = c.get("sortOrder") or c.get("order") or (c.get("status", {}) or {}).get("position", {}).get("id")
                 for ls in c.get("linescores", []) or []:
                     rnd = ls.get("period")
                     val = ls.get("value")
@@ -128,7 +150,7 @@ def main(inspect=False, skip_file=None, out_dir=None):
                 if (m.get("end") or m.get("start") or "9999") > now:
                     continue                                  # not finished yet
                 try:
-                    d = get(f"https://site.api.espn.com/apis/site/v2/sports/golf/{league}/scoreboard?event={m['id']}")
+                    d = historical_leaderboard(league, m["id"])
                 except Exception as e:
                     log.append(f"{league} {m['id']} {m['label']}: fetch failed ({e})"); continue
                 if inspect:
@@ -142,7 +164,7 @@ def main(inspect=False, skip_file=None, out_dir=None):
             print(f"{league} {y}: {len(cal)} calendar events, total rounds so far {len(out):,}")
     X = pd.DataFrame(out)
     if X.empty:
-        print("NO ROUNDS PULLED. Check network allowlist / run with --inspect.\n" + "\n".join(log[:20]))
+        print("NO ROUNDS PULLED. Check ESPN response format / run with --inspect.\n" + "\n".join(log[:20]))
         sys.exit(1)
     X = X.drop_duplicates(["tournament_id", "round", "player_id"])
     # par missing for some rows: use the event-round mode
