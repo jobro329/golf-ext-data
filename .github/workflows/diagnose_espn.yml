@@ -1,0 +1,105 @@
+name: Diagnose ESPN round scores
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Compare ESPN historical event endpoints
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import pathlib
+          import time
+          import urllib.error
+          import urllib.request
+
+          directory = pathlib.Path("espn-diagnostic")
+          directory.mkdir(exist_ok=True)
+          events = {
+              "eur": ("401734060", "2025 Italian Open"),
+              "liv": ("401713459", "2025 LIV Golf Adelaide"),
+          }
+          base = "https://site.api.espn.com/apis/site/v2/sports/golf"
+
+          def summarize(data, requested):
+              print("    Top-level keys:", list(data)[:16] if isinstance(data, dict) else type(data).__name__)
+              if not isinstance(data, dict):
+                  return
+              event_list = data.get("events", [])
+              if isinstance(event_list, list):
+                  print("    events[] count:", len(event_list))
+                  for event in event_list[:2]:
+                      print("    Returned event:", event.get("id"), event.get("name"), "MATCH" if str(event.get("id")) == requested else "NOT REQUESTED ID")
+                      comps = event.get("competitions") or []
+                      print("    competitions[] count:", len(comps))
+                      for comp in comps[:1]:
+                          competitors = comp.get("competitors") or []
+                          print("    competitors[] count:", len(competitors))
+                          if competitors:
+                              player = competitors[0]
+                              linescores = player.get("linescores") or []
+                              print("    Sample competitor keys:", list(player)[:16])
+                              print("    Sample linescores count:", len(linescores))
+                              if linescores:
+                                  print("    Sample linescore:", str(linescores[0])[:350])
+              for key in ("leaderboard", "competition", "competitions", "players", "athletes", "header"):
+                  if key in data:
+                      value = data[key]
+                      print("    Additional field:", key, "type:", type(value).__name__, "length:", len(value) if hasattr(value, "__len__") else "n/a")
+              # Locate nested arrays called linescores or rounds; no player personal data is printed.
+              found = []
+              def scan(obj, path="root", depth=0):
+                  if depth >= 7 or len(found) >= 8:
+                      return
+                  if isinstance(obj, dict):
+                      for k, v in obj.items():
+                          if k in ("linescores", "rounds") and isinstance(v, list):
+                              found.append(f"{path}.{k} ({len(v)} entries)")
+                          if isinstance(v, (dict, list)):
+                              scan(v, f"{path}.{k}", depth + 1)
+                  elif isinstance(obj, list):
+                      for i, v in enumerate(obj[:2]):
+                          scan(v, f"{path}[{i}]", depth + 1)
+              scan(data)
+              print("    Possible score paths:", found or "None found")
+
+          for league, (event_id, label) in events.items():
+              paths = {
+                  "scoreboard-event": f"{base}/{league}/scoreboard?event={event_id}",
+                  "leaderboard": f"{base}/{league}/leaderboard?tournamentId={event_id}",
+                  "summary": f"{base}/{league}/summary?event={event_id}",
+              }
+              print(f"\n==== {league.upper()}: {label} ({event_id}) ====")
+              for endpoint, url in paths.items():
+                  print(f"\n  Testing {endpoint}: {url}", flush=True)
+                  try:
+                      request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Golf score diagnostics)"})
+                      with urllib.request.urlopen(request, timeout=25) as response:
+                          payload = response.read()
+                          print("    HTTP status:", response.status, "bytes:", len(payload))
+                      destination = directory / f"{league}_{endpoint}.json"
+                      destination.write_bytes(payload)
+                      data = json.loads(payload)
+                      summarize(data, event_id)
+                  except Exception as exc:
+                      print("    ERROR:", repr(exc), flush=True)
+                  time.sleep(0.4)
+          print("\nDiagnostic complete. No model data has been changed.")
+          PY
+
+      - name: Upload raw ESPN JSON for inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: espn-diagnostic
+          path: espn-diagnostic/
+          retention-days: 7
+          if-no-files-found: warn
