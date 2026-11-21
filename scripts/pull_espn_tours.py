@@ -42,6 +42,12 @@ ROOT = os.environ.get("GOLF_ROOT", "/home/claude/golfdata" if os.path.isdir("/ho
 PQ = f"{ROOT}/pq"
 os.makedirs(PQ, exist_ok=True)
 SKIP = re.compile(r"team|match play|stableford|ryder|presidents|pro-am only|shootout|hero cup|q-school", re.I)
+# Explicitly confirmed cancelled events which ESPN still lists in its season calendars.
+# Do not broaden this to all scoreless events: an actual completed tournament without
+# scores must still fail validation rather than silently go missing.
+CANCELLED_EVENT_IDS = {
+    "401843582": "2026 LIV Golf Michigan - Stroke Play (cancelled before play)",
+}
 UA = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0 Safari/537.36",
     "Accept": "application/json, text/plain, */*",
@@ -183,6 +189,9 @@ def main(inspect=False, skip_file=None, out_dir=None, baseline_file="data/rounds
             eligible = 0
             for m in cal:
                 eid = str(m["id"])
+                if eid in CANCELLED_EVENT_IDS:
+                    print(f"skipped cancelled event {league} {year} {eid}: {CANCELLED_EVENT_IDS[eid]}", flush=True)
+                    continue
                 if eid in seen or eid in have or eid in pga or SKIP.search(m.get("label") or ""):
                     continue
                 seen.add(eid)
