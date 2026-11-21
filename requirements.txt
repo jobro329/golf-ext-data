@@ -1,0 +1,4 @@
+# Versions the scripts were tested with (Python 3.13). The pull itself uses only the standard library + pandas.
+pandas==3.0.5
+pyarrow==26.0.1
+numpy==2.5.3
