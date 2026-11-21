@@ -1,1 +1,71 @@
+name: DP World + LIV weekly pull
 
+on:
+  schedule:
+    # Tuesdays 09:17 UTC (5:17 AM Atlantic in winter, 6:17 AM in summer). GitHub can start scheduled runs late,
+    # so this leaves hours of room before the Claude model's Tuesday run at 2:34 PM Atlantic.
+    - cron: "17 9 * * 2"
+  workflow_dispatch: {}        # "Run workflow" button for manual runs
+
+permissions:
+  contents: write              # lets the job commit the validated data back to this repo
+
+concurrency:
+  group: ext-pull
+  cancel-in-progress: false
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Pull DP World Tour and LIV rounds from ESPN
+        run: python scripts/pull_espn_tours.py --skip-file reference/pga_feed_event_ids.csv --out output
+
+      - name: Validate (player ids, duplicates, real scores, nothing lost vs last week)
+        run: >
+          python scripts/validate.py --new output/rounds_ext.csv --baseline data/rounds_ext.csv
+          --players reference/players.csv --pga-events reference/pga_feed_event_ids.csv --out output
+
+      - name: Build the four project tables
+        run: python scripts/split_tables.py output/rounds_ext.csv output/project_tables
+
+      - name: Show the validation report on the run page
+        if: always()
+        run: cat output/validation_report.md >> "$GITHUB_STEP_SUMMARY" || echo "no report (pull failed)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload files (download from the run page)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dpwt-liv-${{ github.run_number }}
+          path: output/
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Commit validated data to the repo
+        if: success()
+        run: |
+          cp output/rounds_ext.csv data/rounds_ext.csv
+          cp output/rounds_ext.parquet data/rounds_ext.parquet
+          mkdir -p data/project_tables
+          cp output/project_tables/*.csv data/project_tables/
+          cp output/validation_report.md data/validation_report.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/
+          if git diff --cached --quiet; then
+            echo "No new rounds this week; nothing to commit."
+          else
+            git commit -m "DP World/LIV weekly pull $(date -u +%F)"
+            git push
