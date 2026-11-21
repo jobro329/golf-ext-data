@@ -39,14 +39,16 @@ Either of these, after the Tuesday run:
   - `data/rounds_ext.csv` and `data/rounds_ext.parquet` (full file, model schema)
   - `data/project_tables/ext_*.csv` (the four small tables for the Claude project)
   - `data/validation_report.md` (what was checked and what's new this week)
+  - `data/status.json` (written after every run, pass or fail: conclusion, finish time, time of the last good run). The Claude model reads this to tell whether this week's data is real and fresh.
 
   Click a file, then the download button (top right of the file view).
 - **From the run:** Actions > the run > *Artifacts* > `dpwt-liv-<number>` (a ZIP of everything, kept 30 days).
   Failed runs keep their files here too, so you can see what went wrong. Failed data is never committed.
 
-**Giving it to Claude:** upload the four `data/project_tables/ext_*.csv` files to the Claude project's files.
-The full `rounds_ext.csv` (about 9 MB) is too big for the project's space limit. The Tuesday model run validates
-the upload again and uses it.
+**Giving it to Claude:** nothing to do. The Claude model's Tuesday 2:34 PM Atlantic run downloads `data/status.json`
+and the four `data/project_tables/ext_*.csv` files straight from this repo (raw.githubusercontent.com), checks them
+again, and uses them. That only works while the repo is **public**: Claude's scheduled runs have no GitHub login,
+so a private repo returns 404 and the model falls back to the last validated copy (and says so).
 
 ## The checks (`scripts/validate.py`)
 

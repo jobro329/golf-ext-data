@@ -111,9 +111,10 @@ def main():
             + (f" (e.g. {list(flat.index[:3])})" if len(flat) else ""))
     off = er4[~(er4["mean"] - er4.par).between(-6, 8)]
     R.check("scoring averages plausible", off.empty, f"{len(off)} event-rounds averaging outside -6/+8 vs par")
-    r1 = X[X["round"] == 1].groupby(["tour", "tournament_id"]).player_id.nunique().reset_index()
+    # largest round field per event (multi-course events can look small in one round after cleaning)
+    r1 = X[X["round"] <= 4].groupby(["tour", "tournament_id", "round"]).player_id.nunique().groupby(["tour", "tournament_id"]).max().reset_index()
     small = r1[r1.player_id < np.where(r1.tour == "liv", 40, 30)]
-    R.check("field sizes", small.empty, f"{len(small)} events with a round-1 field under 30 (DP World) / 40 (LIV)")
+    R.check("field sizes", small.empty, f"{len(small)} events whose largest round field is under 30 (DP World) / 40 (LIV)")
     partial = int((X.par != X.groupby(["tournament_id", "round"]).par.transform(lambda s: s.mode().iloc[0])).sum())
     if partial:
         R.warn("partial rounds", f"{partial} rows whose par differs from the event-round par (partial rounds). "
