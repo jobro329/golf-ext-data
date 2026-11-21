@@ -1,98 +1,85 @@
-name: Diagnose production golf pull
+name: DP World + LIV weekly pull
 
 on:
-  workflow_dispatch: {}
+  schedule:
+    # Tuesdays 09:17 UTC (5:17 AM Atlantic in winter, 6:17 AM in summer). GitHub can start scheduled runs late,
+    # so this leaves hours of room before the Claude model's Tuesday run at 2:34 PM Atlantic.
+    - cron: "17 9 * * 2"
+  workflow_dispatch: {}        # "Run workflow" button for manual runs
 
 permissions:
-  contents: read
+  contents: write              # lets the job commit the validated data back to this repo
+
+concurrency:
+  group: ext-pull
+  cancel-in-progress: false
 
 jobs:
-  inspect:
+  pull:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
-      - name: Install existing project dependencies
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: Compare live ESPN responses with production parser and calendar
-        shell: bash
-        run: |
-          python - <<'PY'
-          import json
-          import os
-          import time
-          from datetime import datetime, timezone
-          import pandas as pd
-          from scripts import pull_espn_tours as p
 
-          os.makedirs('diagnostics', exist_ok=True)
-          records = []
-          now = datetime.now(timezone.utc).isoformat()
-          skip = set(pd.read_csv('reference/pga_feed_event_ids.csv', dtype={'tournament_id': str}).tournament_id)
+      - name: Pull DP World Tour and LIV rounds from ESPN
+        run: python scripts/pull_espn_tours.py --skip-file reference/pga_feed_event_ids.csv --out output
 
-          def probe(league, event_id, label, season):
-              record = {'league': league, 'event_id': str(event_id), 'event_label': label, 'season': season}
-              try:
-                  response = p.historical_leaderboard(league, str(event_id))
-                  event = response['events'][0]
-                  comp = event.get('competitions', [])
-                  competitors = sum(len(c.get('competitors', [])) for c in comp)
-                  round_items = sum(len(c.get('linescores', [])) for k in comp for c in k.get('competitors', []))
-                  rows = p.parse_event(response, league, {'label': label, 'start': ''})
-                  record.update({'result': 'fetched', 'returned_id': str(event.get('id')),
-                                 'competitions': len(comp), 'competitors': competitors,
-                                 'line_score_items': round_items, 'parsed_round_rows': len(rows),
-                                 'status': event.get('status', {}).get('type', {}).get('name', '')})
-                  if not rows:
-                      with open(f'diagnostics/empty_{league}_{event_id}.json', 'w') as f:
-                          json.dump(response, f, indent=2)
-              except Exception as ex:
-                  record.update({'result':'error', 'error': f'{type(ex).__name__}: {ex}'})
-              records.append(record)
-              print('EVENT', json.dumps(record, ensure_ascii=False), flush=True)
-              return record
+      - name: Validate (player ids, duplicates, real scores, nothing lost vs last week)
+        run: >
+          python scripts/validate.py --new output/rounds_ext.csv --baseline data/rounds_ext.csv
+          --players reference/players.csv --pga-events reference/pga_feed_event_ids.csv --out output
 
-          # These two completed event IDs returned scores in the earlier V2 diagnostic.
-          probes = [
-              ('eur', '401734047', 2025, '2025 Hero Dubai Desert Classic'),
-              ('liv', '401713458', 2025, '2025 LIV Golf Riyadh'),
-          ]
-          for league, eid, season, label in probes:
-              try:
-                  cal = p.calendar(league, season)
-                  matches = [x for x in cal if str(x['id']) == eid]
-                  eligible = [x for x in cal if x['id'] not in skip and not p.SKIP.search(x.get('label') or '')
-                              and (x.get('end') or x.get('start') or '9999') <= now]
-                  summary = {'league':league, 'year':season, 'calendar_count':len(cal),
-                             'expected_id':eid, 'expected_id_in_calendar':bool(matches),
-                             'matching_calendar_entry': matches[:1], 'eligible_count':len(eligible),
-                             'first_eligible':eligible[:5],
-                             'year_first_5':cal[:5], 'now_utc':now}
-                  records.append({'calendar': summary})
-                  print('CALENDAR',json.dumps(summary,ensure_ascii=False),flush=True)
-                  probe(league, eid, label, season)
-                  # Compare with actual IDs the production loop would choose.
-                  for m in eligible[:3]:
-                      if m['id'] == eid: continue
-                      probe(league, m['id'], m.get('label',''), season)
-                      time.sleep(0.4)
-              except Exception as ex:
-                  msg={'league':league,'season':season,'calendar_error':f'{type(ex).__name__}: {ex}'}
-                  records.append(msg)
-                  print('CALENDAR ERROR',json.dumps(msg),flush=True)
+      - name: Build the four project tables
+        run: python scripts/split_tables.py output/rounds_ext.csv output/project_tables
 
-          with open('diagnostics/production_probe.json','w') as f:
-              json.dump(records,f,indent=2,ensure_ascii=False)
-          print('Done: no data files were changed.',flush=True)
-          PY
-      - name: Upload diagnostic results
+      - name: Show the validation report on the run page
+        if: always()
+        run: cat output/validation_report.md >> "$GITHUB_STEP_SUMMARY" || echo "no report (pull failed)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload files (download from the run page)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: production-pull-diagnostic
-          path: diagnostics/
-          retention-days: 14
+          name: dpwt-liv-${{ github.run_number }}
+          path: output/
+          retention-days: 30
           if-no-files-found: warn
+
+      - name: Commit validated data + run status (status is written on success AND failure)
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+          RUN_NUMBER: ${{ github.run_number }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -e
+          NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          if [ "$JOB_STATUS" = "success" ]; then
+            cp output/rounds_ext.csv data/rounds_ext.csv
+            cp output/rounds_ext.parquet data/rounds_ext.parquet
+            mkdir -p data/project_tables
+            cp output/project_tables/*.csv data/project_tables/
+            cp output/validation_report.md data/validation_report.md
+            LAST_OK=$NOW
+          else
+            # keep the time of the last good run so the model can tell this week's data is missing
+            LAST_OK=$(python -c "import json;print(json.load(open('data/status.json')).get('last_success_utc',''))" 2>/dev/null || echo "")
+          fi
+          ROWS=$(python -c "import pandas as pd;print(len(pd.read_csv('data/project_tables/ext_scores.csv')))" 2>/dev/null || echo 0)
+          cat > data/status.json <<JSON
+          {"conclusion": "$JOB_STATUS", "finished_utc": "$NOW", "last_success_utc": "$LAST_OK",
+           "run_number": $RUN_NUMBER, "run_id": $RUN_ID, "rows_in_project_tables": $ROWS}
+          JSON
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/
+          git commit -m "DP World/LIV weekly pull $(date -u +%F): $JOB_STATUS" || echo "nothing to commit"
+          git push
