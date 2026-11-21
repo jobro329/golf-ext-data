@@ -1,0 +1,98 @@
+name: Diagnose production golf pull
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install existing project dependencies
+        run: pip install -r requirements.txt
+      - name: Compare live ESPN responses with production parser and calendar
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import time
+          from datetime import datetime, timezone
+          import pandas as pd
+          from scripts import pull_espn_tours as p
+
+          os.makedirs('diagnostics', exist_ok=True)
+          records = []
+          now = datetime.now(timezone.utc).isoformat()
+          skip = set(pd.read_csv('reference/pga_feed_event_ids.csv', dtype={'tournament_id': str}).tournament_id)
+
+          def probe(league, event_id, label, season):
+              record = {'league': league, 'event_id': str(event_id), 'event_label': label, 'season': season}
+              try:
+                  response = p.historical_leaderboard(league, str(event_id))
+                  event = response['events'][0]
+                  comp = event.get('competitions', [])
+                  competitors = sum(len(c.get('competitors', [])) for c in comp)
+                  round_items = sum(len(c.get('linescores', [])) for k in comp for c in k.get('competitors', []))
+                  rows = p.parse_event(response, league, {'label': label, 'start': ''})
+                  record.update({'result': 'fetched', 'returned_id': str(event.get('id')),
+                                 'competitions': len(comp), 'competitors': competitors,
+                                 'line_score_items': round_items, 'parsed_round_rows': len(rows),
+                                 'status': event.get('status', {}).get('type', {}).get('name', '')})
+                  if not rows:
+                      with open(f'diagnostics/empty_{league}_{event_id}.json', 'w') as f:
+                          json.dump(response, f, indent=2)
+              except Exception as ex:
+                  record.update({'result':'error', 'error': f'{type(ex).__name__}: {ex}'})
+              records.append(record)
+              print('EVENT', json.dumps(record, ensure_ascii=False), flush=True)
+              return record
+
+          # These two completed event IDs returned scores in the earlier V2 diagnostic.
+          probes = [
+              ('eur', '401734047', 2025, '2025 Hero Dubai Desert Classic'),
+              ('liv', '401713458', 2025, '2025 LIV Golf Riyadh'),
+          ]
+          for league, eid, season, label in probes:
+              try:
+                  cal = p.calendar(league, season)
+                  matches = [x for x in cal if str(x['id']) == eid]
+                  eligible = [x for x in cal if x['id'] not in skip and not p.SKIP.search(x.get('label') or '')
+                              and (x.get('end') or x.get('start') or '9999') <= now]
+                  summary = {'league':league, 'year':season, 'calendar_count':len(cal),
+                             'expected_id':eid, 'expected_id_in_calendar':bool(matches),
+                             'matching_calendar_entry': matches[:1], 'eligible_count':len(eligible),
+                             'first_eligible':eligible[:5],
+                             'year_first_5':cal[:5], 'now_utc':now}
+                  records.append({'calendar': summary})
+                  print('CALENDAR',json.dumps(summary,ensure_ascii=False),flush=True)
+                  probe(league, eid, label, season)
+                  # Compare with actual IDs the production loop would choose.
+                  for m in eligible[:3]:
+                      if m['id'] == eid: continue
+                      probe(league, m['id'], m.get('label',''), season)
+                      time.sleep(0.4)
+              except Exception as ex:
+                  msg={'league':league,'season':season,'calendar_error':f'{type(ex).__name__}: {ex}'}
+                  records.append(msg)
+                  print('CALENDAR ERROR',json.dumps(msg),flush=True)
+
+          with open('diagnostics/production_probe.json','w') as f:
+              json.dump(records,f,indent=2,ensure_ascii=False)
+          print('Done: no data files were changed.',flush=True)
+          PY
+      - name: Upload diagnostic results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-pull-diagnostic
+          path: diagnostics/
+          retention-days: 14
+          if-no-files-found: warn
