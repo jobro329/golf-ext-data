@@ -10,7 +10,7 @@ File: `output/rounds_ext.csv`, 105,129 rows
 - WARN **playoff rows**: 4 rows with round > 4 in 2 events: ESPN logs playoffs as an extra period. Not real 18-hole rounds; the model's field-size filter keeps them out of ratings.
 - PASS **no placeholder rounds**: 0 event-rounds with no real spread of scores
 - PASS **scoring averages plausible**: 0 event-rounds averaging outside -6/+8 vs par
-- PASS **field sizes**: 0 events with a round-1 field under 30 (DP World) / 40 (LIV)
+- PASS **field sizes**: 0 events whose largest round field is under 30 (DP World) / 40 (LIV)
 - WARN **partial rounds**: 504 rows whose par differs from the event-round par (partial rounds). The model drops these automatically.
 - WARN **Dunhill Links R1-3**: 2859 rows from the three-course rotation. The model drops these automatically.
 - PASS **no duplicate player-rounds**: 0 repeated tournament_id + round + player_id rows
