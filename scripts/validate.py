@@ -193,6 +193,13 @@ def main():
 def finish(R, out):
     R.info(f"\n## Result: {'FAILED, do not use this pull' if R.fails else 'PASSED'} "
            f"({len(R.fails)} failures, {len(R.warns)} warnings)")
+    # Machine-readable run stamp. The workflow only commits this report when the run succeeds, so the Claude model
+    # can read the time of the last good run from it (works with the original workflow; no status.json needed).
+    from datetime import datetime, timezone
+    stamp = {"generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "passed": not R.fails,
+             "run_number": os.environ.get("GITHUB_RUN_NUMBER"), "run_id": os.environ.get("GITHUB_RUN_ID"),
+             "rows": R.stats.get("rows")}
+    R.info(f"\nGenerated {stamp['generated_utc']} (GitHub run {stamp['run_number']})\n<!-- run-status: {json.dumps(stamp)} -->")
     open(f"{out}/validation_report.md", "w").write("\n".join(R.lines) + "\n")
     json.dump({"passed": not R.fails, "failures": R.fails, "warnings": R.warns, **R.stats},
               open(f"{out}/validation_summary.json", "w"), indent=2)
