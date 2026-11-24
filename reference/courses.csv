@@ -1,0 +1,105 @@
+course_id,course_name,tz,lat,lon
+004,Torrey Pines Golf Course (South Course),America/Los_Angeles,32.9,-117.252
+005,Pebble Beach Golf Links,America/Los_Angeles,36.568,-121.95
+006,Waialae Country Club,Pacific/Honolulu,21.273,-157.776
+008,Trump National Doral - Blue Monster Course,America/New_York,25.813,-80.338
+009,Arnold Palmer's Bay Hill Club & Lodge,America/New_York,28.461,-81.507
+011,TPC Sawgrass - THE PLAYERS Stadium Course,America/New_York,30.198,-81.394
+012,Harbour Town Golf Links,America/New_York,32.137,-80.812
+014,Augusta National Golf Club,America/New_York,33.503,-82.022
+021,Colonial Country Club,America/Chicago,32.716,-97.367
+023,Muirfield Village Golf Club,America/New_York,40.12,-83.17
+043,The Los Angeles Country Club (North Course),America/Los_Angeles,34.067,-118.427
+104,Torrey Pines Golf Course (North Course),America/Los_Angeles,32.904,-117.246
+185,Austin Country Club,America/Chicago,30.345,-97.795
+202,La Quinta Country Club,America/Los_Angeles,33.701,-116.302
+205,Spyglass Hill Golf Course,America/Los_Angeles,36.584,-121.952
+232,Albany GC,America/New_York,25.009,-77.507
+233,Nicklaus Tournament Course,America/Los_Angeles,33.643,-116.27
+237,TPC Potomac at Avenel Farm,America/New_York,39.017,-77.205
+241,Quail Hollow Club,America/New_York,35.112,-80.849
+244,Puntacana Resort & Club (Corales Golf Course),America/New_York,18.464,-68.378
+250,Le Golf National,Europe/Paris,48.754,2.075
+348,Medinah CC (No. 3),America/Chicago,41.965,-88.044
+379,The Philadelphia Cricket Club (Wissahickon Course),America/New_York,40.096,-75.235
+406,Castle Pines Golf Club,America/Denver,39.452,-104.9
+436,The Royal Montreal GC,America/New_York,45.495,-73.89
+500,The Riviera Country Club,America/Los_Angeles,34.05,-118.502
+503,TPC River Highlands,America/New_York,41.592,-72.663
+510,TPC Scottsdale (Stadium Course),America/Phoenix,33.641,-111.913
+513,TPC Southwind,America/Chicago,35.073,-89.789
+514,Oak Hill Country Club - East Course,America/New_York,43.115,-77.524
+528,Pinehurst Resort & Country Club (Course No. 2),America/New_York,35.19,-79.468
+538,TPC Summerlin,America/Los_Angeles,36.192,-115.302
+541,Royal Birkdale Golf Club,Europe/London,53.622,-3.03
+552,Silverado Resort (North Course),America/Los_Angeles,38.351,-122.27
+608,Oakmont Country Club,America/New_York,40.527,-79.828
+611,Southern Hills CC,America/Chicago,36.045,-95.954
+618,Shinnecock Hills Golf Club,America/New_York,40.89,-72.442
+654,The Country Club,America/New_York,42.312,-71.148
+656,Plantation Course at Kapalua,Pacific/Honolulu,21.0,-156.649
+665,Innisbrook Resort and Golf Club - Copperhead Course,America/New_York,28.103,-82.753
+668,St. Andrews GC (Old Course),Europe/London,56.343,-2.803
+669,TPC Deere Run,America/Chicago,41.498,-90.398
+671,Valhalla Golf Club,America/New_York,38.248,-85.483
+678,Tiburón Golf Course,America/New_York,26.267,-81.778
+679,Bellerive Country Club,America/Chicago,38.629,-90.471
+688,East Lake Golf Club,America/New_York,33.746,-84.307
+689,Bethpage State Park (Black),America/New_York,40.746,-73.457
+704,Pete Dye Stadium Course,America/Los_Angeles,33.646,-116.284
+709,Royal Troon,Europe/London,55.531,-4.645
+714,TPC Louisiana,America/Chicago,29.903,-90.193
+733,El Camaleón Golf Course at Mayakoba,America/Cancun,20.69,-87.03
+734,PGA National Resort (The Champion),America/New_York,26.831,-80.135
+742,Grand Reserve Golf Club,America/Puerto_Rico,18.38,-65.795
+746,The Country Club of Jackson,America/Chicago,32.403,-90.123
+752,Sedgefield Country Club,America/New_York,36.022,-79.859
+765,Port Royal Golf Course,Atlantic/Bermuda,32.256,-64.866
+769,Monterey Peninsula Country Club (Shore Course),America/Los_Angeles,36.596,-121.957
+770,TPC San Antonio - The Oaks Course,America/Chicago,29.643,-98.427
+772,St. George's G&CC,America/Toronto,43.665,-79.522
+773,Aronimink Golf Club,America/New_York,39.982,-75.393
+776,Sea Island Golf Club (Seaside Course),America/New_York,31.155,-81.391
+872,Quail Hollow Club,America/New_York,35.112,-80.849
+874,Hamilton Golf & Country Club,America/New_York,43.222,-79.951
+875,ACCORDIA GOLF Narashino Country Club,Asia/Tokyo,35.77,140.15
+876,Detroit Golf Club,America/New_York,42.426,-83.151
+882,Caves Valley Golf Club,America/New_York,39.448,-76.786
+883,TPC Twin Cities,America/Chicago,45.177,-93.248
+884,Keene Trace Golf Club (Champion Trace),America/New_York,37.917,-84.57
+885,Royal Portrush Golf Club,Europe/London,55.202,-6.638
+889,Sea Island Golf Club (Plantation Course),America/New_York,31.16,-81.388
+890,Tahoe Mountain Club (Old Greenwood),America/Los_Angeles,39.338,-120.137
+894,TPC Craig Ranch,America/Chicago,33.13,-96.704
+896,Olympia Fields Country Club (North Course),America/Chicago,41.515,-87.693
+897,Memorial Park Golf Course,America/Chicago,29.763,-95.432
+899,The Summit Club,America/Los_Angeles,36.175,-115.329
+901,Wilmington Country Club,America/New_York,39.775,-75.59
+902,Congaree Golf Club,America/New_York,32.455,-80.928
+908,Oakdale Golf & Country Club,America/Toronto,43.739,-79.528
+918,Marco Simone Golf & Country Club,Europe/Paris,41.954,12.663
+919,El Cardonal at Diamante,America/Phoenix,22.93,-109.98
+920,Tiburón Golf Club,America/New_York,26.267,-81.778
+921,TPC Craig Ranch,America/Chicago,33.13,-96.704
+922,Dye's Valley Course,America/New_York,30.2,-81.39
+923,Royal Liverpool,Europe/London,53.383,-3.184
+925,Dunes Golf and Beach Club,America/New_York,33.725,-78.835
+926,Silverado Resort (North Course),America/Los_Angeles,38.351,-122.27
+927,Sawgrass Country Club,America/New_York,30.183,-81.38
+928,PGA National - Champion Course,America/New_York,26.831,-80.135
+930,Black Desert Resort,America/Denver,37.17,-113.68
+931,Tahoe Mountain Club (Old Greenwood),America/Los_Angeles,39.338,-120.137
+933,East Lake Golf Club,America/New_York,33.746,-84.307
+934,Hurstbourne Country Club,America/New_York,38.243,-85.583
+935,TPC Toronto at Osprey Valley - North Course,America/New_York,43.877,-80.048
+936,Yokohama Country Club,Asia/Tokyo,35.45,139.54
+939,Torrey Pines Golf Course (South Course),America/Los_Angeles,32.9,-117.252
+940,Grand Reserve Golf Club,America/Puerto_Rico,18.38,-65.795
+942,The Cliffs at Walnut Cove,America/New_York,35.454,-82.586
+943,Fazio Canyons Course - Omni Barton Creek Resort & Spa,America/Chicago,30.29,-97.86
+944,TPC Craig Ranch,America/Chicago,33.13,-96.704
+945,The Renaissance Club,Europe/London,56.05,-2.81
+947,Detroit Golf Club,America/New_York,42.426,-83.151
+951,Vidanta Vallarta,America/Mexico_City,20.7,-105.29
+977,The Renaissance Club,Europe/London,56.05,-2.81
+978,Vidanta Vallarta,America/Chicago,20.7,-105.29
