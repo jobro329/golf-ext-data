@@ -4,7 +4,7 @@ on:
   schedule:
     # Tuesdays 09:17 UTC (5:17 AM Atlantic in winter, 6:17 AM in summer). GitHub can start scheduled runs late,
     # so this leaves hours of room before the Claude model's Tuesday run at 2:34 PM Atlantic.
-    - cron: "17 9 * * 2"
+    - cron: "17 9 * * 1"   # Mondays 09:17 UTC (5:17 AM Atlantic), before the Monday model run
   workflow_dispatch: {}        # "Run workflow" button for manual runs
 
 permissions:
@@ -64,6 +64,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/
-          git diff --cached --quiet || git commit -m "DP World/LIV weekly pull $(date -u +%F)"
-          git push
+          git diff --cached --quiet && { echo "No changes"; exit 0; }
+          git commit -m "DP World/LIV weekly pull $(date -u +%F)"
+          for i in 1 2 3; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" && git push && exit 0
+            sleep 5
+          done
+          exit 1
 
