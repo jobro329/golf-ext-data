@@ -1,0 +1,12 @@
+{
+  "mode": "forecast",
+  "generated_utc": "2026-11-26T03:48:51Z",
+  "passed": true,
+  "rows": 144,
+  "courses": 1,
+  "problems": [],
+  "events": [
+    "Hero World Challenge"
+  ],
+  "unknown_venues": []
+}
